@@ -1,77 +1,95 @@
 import json
 from datetime import datetime
-from collections import defaultdict
 
-DATA_FILE = "expenses.json"
+class ExpenseTracker:
+    def __init__(self, data_file='expenses.json'):
+        self.data_file = data_file
+        self.expenses = self.load_expenses()
 
-# Load existing expenses or initialize an empty list
-def load_expenses():
-    try:
-        with open(DATA_FILE, 'r') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+    def load_expenses(self):
+        try:
+            with open(self.data_file, 'r') as file:
+                return json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
 
-# Save expenses to a file
-def save_expenses(expenses):
-    with open(DATA_FILE, 'w') as file:
-        json.dump(expenses, file, indent=4)
+    def save_expenses(self):
+        with open(self.data_file, 'w') as file:
+            json.dump(self.expenses, file, indent=4)
 
-# Add a new expense
-def add_expense(expenses):
-    try:
-        amount = float(input("Enter amount: "))
-        description = input("Enter description: ")
-        category = input("Enter category (e.g., Food, Transportation): ")
-        date_str = input("Enter date (YYYY-MM-DD) or press Enter for today: ")
-        date = date_str if date_str else datetime.now().strftime('%Y-%m-%d')
+    def add_expense(self, amount, category, description):
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError("Amount must be positive.")
 
-        expense = {"amount": amount, "description": description, "category": category, "date": date}
-        expenses.append(expense)
-        save_expenses(expenses)
-        print("Expense added successfully!\n")
-    except ValueError:
-        print("Invalid input. Please enter numeric values for the amount.\n")
+            expense = {
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'amount': amount,
+                'category': category,
+                'description': description
+            }
+            self.expenses.append(expense)
+            self.save_expenses()
+            print("Expense added successfully.")
+        except ValueError as e:
+            print(f"Error: {e}")
 
-# View expenses summary
-def view_summary(expenses):
-    monthly_summary = defaultdict(float)
-    category_summary = defaultdict(float)
+    def view_summary(self):
+        if not self.expenses:
+            print("No expenses recorded.")
+            return
 
-    for expense in expenses:
-        month = expense['date'][:7]
-        monthly_summary[month] += expense['amount']
-        category_summary[expense['category']] += expense['amount']
+        summary = {}
+        for expense in self.expenses:
+            category = expense['category']
+            summary[category] = summary.get(category, 0) + expense['amount']
 
-    print("\nMonthly Expense Summary:")
-    for month, total in monthly_summary.items():
-        print(f"{month}: ${total:.2f}")
+        print("\nExpense Summary:")
+        for category, total in summary.items():
+            print(f"{category}: ${total:.2f}")
 
-    print("\nCategory-wise Expense Summary:")
-    for category, total in category_summary.items():
-        print(f"{category}: ${total:.2f}")
-    print()
+    def view_monthly_summary(self, month, year):
+        monthly_expenses = [
+            e for e in self.expenses if e['date'].startswith(f"{year}-{str(month).zfill(2)}")
+        ]
 
-# Display menu and handle user choices
-def main():
-    expenses = load_expenses()
+        if not monthly_expenses:
+            print("No expenses for this month.")
+            return
 
-    while True:
-        print("Expense Tracker Menu:")
-        print("1. Add Expense")
-        print("2. View Expense Summary")
-        print("3. Exit")
-        choice = input("Choose an option (1-3): ")
+        total = sum(expense['amount'] for expense in monthly_expenses)
+        print(f"\nTotal expenses for {year}-{str(month).zfill(2)}: ${total:.2f}")
 
-        if choice == '1':
-            add_expense(expenses)
-        elif choice == '2':
-            view_summary(expenses)
-        elif choice == '3':
-            print("Exiting Expense Tracker. Goodbye!")
-            break
-        else:
-            print("Invalid choice. Please select a valid option.\n")
+    def run(self):
+        while True:
+            print("\nExpense Tracker Menu:")
+            print("1. Add Expense")
+            print("2. View Category-wise Summary")
+            print("3. View Monthly Summary")
+            print("4. Exit")
 
-if _name_ == "_main_":
-    main()
+            choice = input("Choose an option: ")
+            
+            if choice == '1':
+                amount = input("Enter amount: ")
+                category = input("Enter category (e.g., Food, Transport, Entertainment): ")
+                description = input("Enter description: ")
+                self.add_expense(amount, category, description)
+            elif choice == '2':
+                self.view_summary()
+            elif choice == '3':
+                month = input("Enter month (MM): ")
+                year = input("Enter year (YYYY): ")
+                self.view_monthly_summary(month, year)
+            elif choice == '4':
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+if __name__ == '__main__':
+    tracker = ExpenseTracker()
+    tracker.run()
+
+
